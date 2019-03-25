@@ -5,6 +5,11 @@ import {
 } from './types';
 import { flatten, isTypedArray, shape, type } from './util';
 
+let gpu: any;
+try {
+  gpu = require('@mateogianolio/turbojs');
+} catch (err) {}
+
 let nblas: any;
 try {
   nblas = require('nblas');
@@ -255,7 +260,14 @@ export class NDArray implements INDArray {
     const { data } = this;
 
     try {
-      nblas.scal(data, scalar);
+      const ipt: any = gpu.alloc(this.length);
+      ipt.data.set(this.data);
+      this.data = gpu.run(ipt, `
+        void main(void) {
+          commit(read() * ${scalar}.);
+        }
+      `);
+      // nblas.scal(data, scalar);
     } catch (err) {
       const { length } = this;
 
